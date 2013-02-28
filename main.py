@@ -1,4 +1,5 @@
 import libtcodpy as libtcod
+import math
 
 #window size
 SCREEN_WIDTH = 80
@@ -60,19 +61,43 @@ class Rect:
 class Object:
     #this is a generic object: the player, a monster, an item, the stairs...
     #it's always represented by a character on screen.
-    def __init__(self, x, y, char, name, color, blocks=False):
+    def __init__(self, x, y, char, name, color, blocks=False, fighter=None, ai=None):
         self.x = x
         self.y = y
         self.char = char
         self.name = name
         self.color = color
         self.blocks = blocks
+        self.fighter = fighter
+        
+        if self.fighter: 
+            self.fighter.owner = self
+        
+        self.ai = ai
+        if self.ai:
+            self.ai.owner = self
  
     def move(self, dx, dy):
         #move by the given amount, if the destination is not blocked
         if not is_blocked(self.x + dx, self.y + dy):
             self.x += dx
             self.y += dy
+ 
+    def move_towards(self, target_x, target_y):
+        #vector from this object to the target, and distance
+        dx = target_x - self.x
+        dy = target_y - self.y
+        distance = math.sqrt(dx ** 2 + dy ** 2)
+        
+        dx = int(round(dx / distance))
+        dy = int(round(dy / distance))
+        self.move(dx, dy)
+        
+    def distance_to(self, other):
+        dx = other.x - self.x
+        dy = other.y - self.y
+        return math.sqrt(dx ** 2 + dy ** 2)
+        
  
     def draw(self):
         #only show if it's visible to the player
@@ -85,7 +110,27 @@ class Object:
         #erase the character that represents this object
         libtcod.console_put_char(con, self.x, self.y, ' ', libtcod.BKGND_NONE)
  
- 
+class Fighter:
+    #combat-related prop and methods (monster, player, NPC)
+    def __init__(self, hp, defense, power):		
+        self.max_hp = hp
+        self.hp = hp
+        self.defense = defense
+        self.power = power
+        
+class BasicMonster:
+    #AI for a basic monster.
+    def take_turn(self):
+        monster = self.owner
+        if libtcod.map_is_in_fov(fov_map, monster.x, monster.y):
+            #move towards player if far away
+            if monster.distance_to(player) >= 2:
+                monster.move_towards(player.x, player.y)
+            
+            elif player.fighter.hp > 0:
+                print 'The attack of the ' + monster.name + ' bounces off your balls!'
+                
+        
 def is_blocked(x, y):
     #first test the map tile
     if map[x][y].blocked:
@@ -189,12 +234,18 @@ def place_objects(room):
         if not is_blocked(x, y):
             if libtcod.random_get_int(0, 0, 100) < 80:  #80% chance of getting an orc
                 #create an orc
-                monster = Object(x, y, 'o', 'orc', libtcod.desaturated_green,
-                    blocks=True)
+                fighter_component = Fighter(hp=10, defense=0, power=3)
+                ai_component = BasicMonster()
+                
+                monster = Object(x, y, 'h', 'hiki', libtcod.desaturated_green,
+                    blocks=True, fighter=fighter_component, ai=ai_component)
             else:
                 #create a troll
-                monster = Object(x, y, 'T', 'troll', libtcod.darker_green,
-                    blocks=True)
+                fighter_component = Fighter(hp=16, defense=1, power=4)
+                ai_component = BasicMonster()
+                
+                monster = Object(x, y, 'U', 'ubo', libtcod.darker_green,
+                    blocks=True, fighter=fighter_component, ai=ai_component)
  
             objects.append(monster)
  
@@ -298,7 +349,10 @@ libtcod.sys_set_fps(LIMIT_FPS)
 con = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
  
 #create object representing the player
-player = Object(0, 0, '@', 'player', libtcod.white, blocks=True)
+fighter_component = Fighter(hp=30, defense=2, power=5) 
+
+#create object representing the player
+player = Object(0, 0, '@', 'player', libtcod.white, blocks=True, fighter=fighter_component)
  
 #the list of objects with just the player
 objects = [player]
@@ -315,6 +369,8 @@ for y in range(MAP_HEIGHT):
 fov_recompute = True
 game_state = 'playing'
 player_action = None
+
+
  
 while not libtcod.console_is_window_closed():
  
@@ -332,5 +388,5 @@ while not libtcod.console_is_window_closed():
  
     if game_state == 'playing' and player_action != 'didnt-take-turn':
         for object in objects:
-            if object != player:
-                print 'The ' + object.name + ' growls!'
+            if object.ai:
+                object.ai.take_turn()
