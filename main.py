@@ -1,6 +1,7 @@
 import libtcodpy as libtcod
 import math
 import textwrap
+import shelve
  
 #size of window 
 SCREEN_WIDTH = 80
@@ -570,6 +571,9 @@ def inventory_menu(header):
     if index is None or len(inventory) == 0: return None
     return inventory[index].item
 
+def msgbox(text, width=50):
+    menu(text, [], width)  #use menu() as a sort of "message box"
+
 def handle_keys():
     global key;
 
@@ -723,10 +727,33 @@ def cast_confuse():
     monster.ai.owner = monster  
     message('The eyes of the ' + monster.name + ' look vacant, as he starts to stumble around!', libtcod.light_green)
  
-#                            #
-# initialization & main loop #
-#                            #
+#                       # 
+# ~ MENU x GAME STATE ~ #
+#                       #
 
+def save_game():
+    file = shelve.open('savegame', 'n')
+    file['map'] = map
+    file['objects'] = objects
+    file['player_index'] = objects.index(player)
+    file['inventory'] = inventory
+    file['game_msgs'] = game_msgs
+    file['game_state'] = game_state
+    file.close()
+    
+def load_game():
+    global map, objects, player, inventory, game_msgs, game_state
+    
+    file = shelve.open('savegame', 'r')
+    map = file['map']
+    objects = file['objects']
+    player = objects[file['player_index']]  #get index of player in objects list and access it
+    inventory = file['inventory']
+    game_msgs = file['game_msgs']
+    game_state = file['game_state']
+    file.close()
+ 
+    initialize_fov()
 def new_game():
     global player, inventory, game_msgs, game_state
     
@@ -778,6 +805,7 @@ def play_game():
 
         player_action = handle_keys()
         if player_action == 'exit':
+            save_game()
             break
  
         if game_state == 'playing' and player_action != 'didnt-take-turn':
@@ -804,11 +832,20 @@ def main_menu():
         if choice == 0:
             new_game()
             play_game()
-        elif choice == 2:
+        if choice == 1:  #load last game
+            try:
+                load_game()
+            except:
+                msgbox('\n No saved game to load.\n', 24)
+                continue
+            play_game()
+        elif choice == 2:  #quit
             break
 
     
-
+#                            #
+# initialization & main loop #
+#                            #
  
 libtcod.console_set_custom_font('arial10x10.png', libtcod.FONT_TYPE_GREYSCALE | libtcod.FONT_LAYOUT_TCOD)
 libtcod.console_init_root(SCREEN_WIDTH, SCREEN_HEIGHT, 'python/libtcod tutorial', False)
