@@ -2,7 +2,7 @@ import libtcodpy as libtcod
 import math
 import textwrap
  
-#size of window
+#size of window 
 SCREEN_WIDTH = 80
 SCREEN_HEIGHT = 50
  
@@ -19,16 +19,19 @@ MSG_WIDTH = SCREEN_WIDTH - BAR_WIDTH - 2
 MSG_HEIGHT = PANEL_HEIGHT - 1
 INVENTORY_WIDTH = 50
 
+#rooms
 ROOM_MAX_SIZE = 10
 ROOM_MIN_SIZE = 6
 MAX_ROOMS = 30
 MAX_ROOM_MONSTERS = 3
 MAX_ROOM_ITEMS = 2
 
-#for cast 
+#for cast
 HEAL_AMOUNT = 4 
 LIGHTNING_DAMAGE = 20
 LIGHTNING_RANGE = 5
+CONFUSE_NUM_TURNS = 10.
+CONFUSE_RANGE = 8
  
 FOV_ALGO = 0  #default FOV algorithm
 FOV_LIGHT_WALLS = True  #light walls or not
@@ -188,6 +191,20 @@ class BasicMonster:
             #close enough, attack! (if the player is still alive.)
             elif player.fighter.hp > 0:
                 monster.fighter.attack(player)
+                
+class ConfusedMonster:
+    def __init__(self, old_ai, num_turns=CONFUSE_NUM_TURNS):
+        self.old_ai = old_ai
+        self.num_turns = num_turns
+        
+    def take_turn(self):
+        if self.num_turns > 0:
+            self.owner.move(libtcod.random_get_int(0, -1, 1), libtcod.random_get_int(0, -1, 1))
+            self.num_turns -= 1
+        
+        else:
+            self.owner.ai = self.old_ai
+            message('The ' + self.owner.name + ' is no longer confused!', libtcod.red)
  
 class Item:
 
@@ -344,9 +361,12 @@ def place_objects(room):
             if dice < 70:
                 item_component = Item(use_function=cast_heal)
                 item = Object(x, y, '!', 'healing potion', libtcod.violet, item=item_component)
-            elif dice < 70+10: #30% chance
-                item_component = Item(use_function=cast_heal)
+            elif dice < 70+15: #15% chance
+                item_component = Item(use_function=cast_lightning)
                 item = Object(x, y, '#', 'exorcism note(throw)', libtcod.light_yellow, item=item_component)
+            else:
+                item_component = Item(use_function=cast_confuse)
+                item = Object(x, y, '#', 'confusion note', libtcod.light_yellow, item=item_component)
             
             objects.append(item)
             item.send_to_back() 
@@ -621,7 +641,18 @@ def cast_lightning():
     message('A exorcism note strikes the ' + monster.name + ' with a loud thunder! The damage is '
         + str(LIGHTNING_DAMAGE) + ' hit points.', libtcod.light_blue)
     monster.fighter.take_damage(LIGHTNING_DAMAGE)
- 
+
+def cast_confuse():
+    monster = closest_monster(CONFUSE_RANGE)
+    if monster is None:
+        message('No enemy is close enough to confuse.', libtcod.red)
+        return 'cancelled'
+        
+    #replace the monster's AI with a "confused" one; after some turns it will restore the old AI
+    old_ai = monster.ai
+    monster.ai = ConfusedMonster(old_ai)
+    monster.ai.owner = monster
+    message('The eyes of the ' + monster.name + ' look vacant, as he starts to stumble around!', libtcod.light_green)
  
 #                            #
 # initialization & main loop #
