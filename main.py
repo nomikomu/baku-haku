@@ -25,6 +25,7 @@ MAX_ROOMS = 30
 MAX_ROOM_MONSTERS = 3
 MAX_ROOM_ITEMS = 2
  
+HEAL_AMOUNT = 4 
  
 FOV_ALGO = 0  #default FOV algorithm
 FOV_LIGHT_WALLS = True  #light walls or not
@@ -186,9 +187,10 @@ class BasicMonster:
                 monster.fighter.attack(player)
  
 class Item:
+
     def __init__(self, use_function=None):
         self.use_function = use_function
-	
+ 
     def pick_up(self):
         if len(inventory) >= 26:
             message('Your inventory is full, cannot pick up ' + self.owner.name + '.', libtcod.red)
@@ -196,13 +198,13 @@ class Item:
             inventory.append(self.owner)
             objects.remove(self.owner)
             message('You picked up a ' + self.owner.name + '!', libtcod.green)
-    
+ 
     def use(self):
         if self.use_function is None:
             message('The ' + self.owner.name + ' cannot be used.')
         else:
             if self.use_function() != 'cancelled':
-                inventory.remove(self.owner)
+                inventory.remove(self.owner) 
             
 def is_blocked(x, y):
     #first test the map tile
@@ -498,6 +500,10 @@ def menu(header, options, width):
     
     libtcod.console_flush()
     key = libtcod.console_wait_for_keypress(True)
+    
+    index = key.c - ord('a')
+    if index >= 0 and index < len(options): return index
+    return None
  
 def inventory_menu(header):
     if len(inventory) == 0:
@@ -506,6 +512,9 @@ def inventory_menu(header):
         options = [item.name for item in inventory]
     
     index = menu(header, options, INVENTORY_WIDTH)
+    
+    if index is None or len(inventory) == 0: return None
+    return inventory[index].item
 
 def handle_keys():
     global key;
@@ -532,19 +541,20 @@ def handle_keys():
             player_move_or_attack(1, 0)     
         else:
             key_char = chr(key.c)
-            
-            if key_char == 'g': 
-                for object in objects:
+ 
+            if key_char == 'g':
+
+                for object in objects: 
                     if object.x == player.x and object.y == player.y and object.item:
                         object.item.pick_up()
                         break
-                        
+ 
             if key_char == 'i':
-                #show the inventory; if an item is selected, use it
+
                 chosen_item = inventory_menu('Press the key next to an item to use it, or any other to cancel.\n')
                 if chosen_item is not None:
-                    chosen_item.use()            
-            
+                    chosen_item.use()
+ 
             return 'didnt-take-turn'
  
 def player_death(player):
@@ -568,10 +578,11 @@ def monster_death(monster):
     monster.send_to_back()
     
 def cast_heal():
+
     if player.fighter.hp == player.fighter.max_hp:
         message('You are already at full health.', libtcod.red)
         return 'cancelled'
-    
+ 
     message('Your wounds start to feel better!', libtcod.light_violet)
     player.fighter.heal(HEAL_AMOUNT)
  
@@ -619,22 +630,20 @@ key = libtcod.Key()
  
 while not libtcod.console_is_window_closed():
  
-    #render the screen
+
     libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,key,mouse)
     render_all()
  
     libtcod.console_flush()
  
-    #erase all objects at their old locations, before they move
+
     for object in objects:
         object.clear()
- 
-    #handle keys and exit game if needed
+
     player_action = handle_keys()
     if player_action == 'exit':
         break
  
-    #let monsters take their turn
     if game_state == 'playing' and player_action != 'didnt-take-turn':
         for object in objects:
             if object.ai:
