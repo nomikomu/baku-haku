@@ -23,6 +23,7 @@ ROOM_MAX_SIZE = 10
 ROOM_MIN_SIZE = 6
 MAX_ROOMS = 30
 MAX_ROOM_MONSTERS = 3
+MAX_ROOM_ITEMS = 2
  
  
 FOV_ALGO = 0  #default FOV algorithm
@@ -71,7 +72,7 @@ class Rect:
 class Object:
     #this is a generic object: the player, a monster, an item, the stairs...
     #it's always represented by a character on screen.
-    def __init__(self, x, y, char, name, color, blocks=False, fighter=None, ai=None):
+    def __init__(self, x, y, char, name, color, blocks=False, fighter=None, ai=None, item=None):
         self.x = x
         self.y = y
         self.char = char
@@ -79,12 +80,17 @@ class Object:
         self.color = color
         self.blocks = blocks
         self.fighter = fighter
-        if self.fighter:  #let the fighter component know who owns it
+        
+        if self.fighter:
             self.fighter.owner = self
  
         self.ai = ai
-        if self.ai:  #let the AI component know who owns it
+        if self.ai: 
             self.ai.owner = self
+        
+        self.item = item
+        if self.item:
+            self.item.owner = self
  
     def move(self, dx, dy):
         #move by the given amount, if the destination is not blocked
@@ -174,6 +180,14 @@ class BasicMonster:
             elif player.fighter.hp > 0:
                 monster.fighter.attack(player)
  
+class Item:
+    def pick_up(self):
+        if len(inventory) >= 26:
+            message('Your inventory is full, cannot pick up ' + self.owner.name + '.', libtcod.red)
+        else:
+            inventory.append(self.owner)
+            objects.remove(self.owner)
+            message('You picked up a ' + self.owner.name + '!', libtcod.green)
  
 def is_blocked(x, y):
     #first test the map tile
@@ -282,8 +296,8 @@ def place_objects(room):
  
     for i in range(num_monsters):
         #choose random spot for this monster
-        x = libtcod.random_get_int(0, room.x1, room.x2)
-        y = libtcod.random_get_int(0, room.y1, room.y2)
+        x = libtcod.random_get_int(0, room.x1+1, room.x2-1)
+        y = libtcod.random_get_int(0, room.y1+1, room.y2-1)
  
         #only place it if the tile is not blocked
         if not is_blocked(x, y):
@@ -303,7 +317,21 @@ def place_objects(room):
                     blocks=True, fighter=fighter_component, ai=ai_component)
  
             objects.append(monster)
- 
+            
+        num_items = libtcod.random_get_int(0, 0, MAX_ROOM_ITEMS)
+        
+        for i in range(num_items):
+            x = libtcod.random_get_int(0, room.x1+1, room.x2-1)
+            y = libtcod.random_get_int(0, room.y1+1, room.y2-1)
+            
+            if  not is_blocked(x, y):
+                item = Object(x, y, '!', 'healing potion', libtcod.normal_chartreuse)
+                
+                objects.append(item)
+                item.send_to_back()
+                
+            item_component = Item()
+            item = Object(x, y, '!', 'healing potion', libtcod.violet, item=item_component)
  
 def render_bar(x, y, total_width, name, value, maximum, bar_color, back_color):
     #render a bar (HP, experience, etc). first calculate the width of the bar
@@ -458,8 +486,16 @@ def handle_keys():
             player_move_or_attack(-1, 0)
  
         elif key.vk == libtcod.KEY_RIGHT:
-            player_move_or_attack(1, 0)
+            player_move_or_attack(1, 0)     
         else:
+            key_char = chr(key.c)
+            
+            if key_char == 'g': 
+                for object in objects:
+                    if object.x == player.x and object.y == player.y and object.item:
+                        object.item.pick_up()
+                        break
+            
             return 'didnt-take-turn'
  
 def player_death(player):
@@ -512,6 +548,8 @@ for y in range(MAP_HEIGHT):
 fov_recompute = True
 game_state = 'playing'
 player_action = None
+ 
+inventory = [] 
  
 #create the list of game messages and their colors, starts empty
 game_msgs = []
