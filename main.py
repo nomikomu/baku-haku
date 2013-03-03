@@ -527,6 +527,8 @@ def menu(header, options, width):
     if len(options) > 26: raise ValueError('Cannot have a menu with more than 26 options.')
     
     header_height = libtcod.console_get_height_rect(con, 0, 0, width, SCREEN_HEIGHT, header)
+    if header == '':
+        header_height = 0
     height = len(options) + header_height
     
     window = libtcod.console_new(width, height)
@@ -550,6 +552,9 @@ def menu(header, options, width):
     libtcod.console_flush()
     key = libtcod.console_wait_for_keypress(True)
     
+    if key.vk == libtcod.KEY_ENTER and key.lalt:  #(special case) Alt+Enter: toggle fullscreen
+        libtcod.console_set_fullscreen(not libtcod.console_is_fullscreen())
+    
     index = key.c - ord('a')
     if index >= 0 and index < len(options): return index
     return None
@@ -567,11 +572,10 @@ def inventory_menu(header):
 
 def handle_keys():
     global key;
- 
+
     if key.vk == libtcod.KEY_ENTER and key.lalt:
-        #Alt+Enter: toggle fullscreen
         libtcod.console_set_fullscreen(not libtcod.console_is_fullscreen())
- 
+        
     elif key.vk == libtcod.KEY_ESCAPE:
         return 'exit'  #exit game
  
@@ -751,6 +755,8 @@ def initialize_fov():
     for y in range(MAP_HEIGHT):
         for x in range(MAP_WIDTH):
             libtcod.map_set_properties(fov_map, x, y, not map[x][y].block_sight, not map[x][y].blocked)
+    
+    libtcod.console_clear(con)  #unexplored areas start black (which is the default background color)
             
 def play_game():
     global key, mouse
@@ -778,10 +784,31 @@ def play_game():
             for object in objects:
                 if object.ai:
                     object.ai.take_turn()
+                    
+def main_menu():
+    img = libtcod.image_load('BG_IMG.png')
+ 
+    while not libtcod.console_is_window_closed():
+        #show the background image, at twice the regular console resolution
+        libtcod.image_blit_2x(img, 0, 0, 0)
+ 
+        #show the game's title, and some credits!
+        libtcod.console_set_default_foreground(0, libtcod.Color(79, 227, 0))
+        libtcod.console_print_ex(0, SCREEN_WIDTH/2, SCREEN_HEIGHT/2-4, libtcod.BKGND_NONE, libtcod.CENTER,
+            'mi8-reEVA')
+        libtcod.console_print_ex(0, SCREEN_WIDTH/2, SCREEN_HEIGHT/2+4, libtcod.BKGND_NONE, libtcod.CENTER,
+            'by defined moe.')
+        
+        choice = menu('', ['start game', 'continue', 'quit'], 24)
+        
+        if choice == 0:
+            new_game()
+            play_game()
+        elif choice == 2:
+            break
 
     
-new_game()
-play_game()
+
  
 libtcod.console_set_custom_font('arial10x10.png', libtcod.FONT_TYPE_GREYSCALE | libtcod.FONT_LAYOUT_TCOD)
 libtcod.console_init_root(SCREEN_WIDTH, SCREEN_HEIGHT, 'python/libtcod tutorial', False)
@@ -789,10 +816,9 @@ libtcod.sys_set_fps(LIMIT_FPS)
 con = libtcod.console_new(MAP_WIDTH, MAP_HEIGHT)
 panel = libtcod.console_new(SCREEN_WIDTH, PANEL_HEIGHT)
  
-
+#install gentoo
+main_menu()
  
-#the list of objects with just the player
-objects = [player]
  
  
 
