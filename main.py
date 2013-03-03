@@ -17,7 +17,7 @@ PANEL_Y = SCREEN_HEIGHT - PANEL_HEIGHT
 MSG_X = BAR_WIDTH + 2
 MSG_WIDTH = SCREEN_WIDTH - BAR_WIDTH - 2
 MSG_HEIGHT = PANEL_HEIGHT - 1
- 
+INVENTORY_WIDTH = 50
 
 ROOM_MAX_SIZE = 10
 ROOM_MIN_SIZE = 6
@@ -463,7 +463,41 @@ def player_move_or_attack(dx, dy):
         player.move(dx, dy)
         fov_recompute = True
  
+def menu(header, options, width):
+    if len(options) > 26: raise ValueError('Cannot have a menu with more than 26 options.')
+    
+    header_height = libtcod.console_get_height_rect(con, 0, 0, width, SCREEN_HEIGHT, header)
+    height = len(options) + header_height
+    
+    window = libtcod.console_new(width, height)
+    
+    libtcod.console_set_default_foreground(window, libtcod.white)
+    libtcod.console_print_rect_ex(window, 0, 0, width, height, libtcod.BKGND_NONE, libtcod.LEFT, header)
+    
+    y = header_height
+    letter_index = ord('a')
+    for option_text in options:
+        text = '(' + chr(letter_index) + ') ' + option_text
+        libtcod.console_print_ex(window, 0, y, libtcod.BKGND_NONE, libtcod.LEFT, text)
+        y += 1
+        letter_index += 1
+
+    #blit the contents of "window" to the root console
+    x = SCREEN_WIDTH/2 - width/2
+    y = SCREEN_HEIGHT/2 - height/2
+    libtcod.console_blit(window, 0, 0, width, height, 0, x, y, 1.0, 0.7)
+    
+    libtcod.console_flush()
+    key = libtcod.console_wait_for_keypress(True)
  
+def inventory_menu(header):
+    if len(inventory) == 0:
+        options = ['Inventory is empty.']
+    else:
+        options = [item.name for item in inventory]
+    
+    index = menu(header, options, INVENTORY_WIDTH)
+
 def handle_keys():
     global key;
  
@@ -495,6 +529,12 @@ def handle_keys():
                     if object.x == player.x and object.y == player.y and object.item:
                         object.item.pick_up()
                         break
+                        
+            if key_char == 'i':
+                #show the inventory; if an item is selected, use it
+                chosen_item = inventory_menu('Press the key next to an item to use it, or any other to cancel.\n')
+                if chosen_item is not None:
+                    chosen_item.use()            
             
             return 'didnt-take-turn'
  
