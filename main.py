@@ -360,27 +360,28 @@ def place_objects(room):
         x = libtcod.random_get_int(0, room.x1+1, room.x2-1)
         y = libtcod.random_get_int(0, room.y1+1, room.y2-1)
  
-        #only place it if the tile is not blocked
+
         if not is_blocked(x, y):
             dice = libtcod.random_get_int(0, 0, 100)
-            if dice < 70: 
-                #70% chance
+            if dice < 70:
+                #(70% chance)
                 item_component = Item(use_function=cast_heal)
-                item = Object(x, y, '!', 'healing potion', libtcod.violet, item=item_component)
-            elif dice < 70+10: 
-                #10% chance
+                item = Object(x, y, '!', 'healing potion', libtcod.Color(207, 247, 0), item=item_component)
+            elif dice < 70+10:
+                #(10% chance)
                 item_component = Item(use_function=cast_lightning)
-                item = Object(x, y, '#', 'exorcism note(throw)', libtcod.light_yellow, item=item_component)
-            elif dice < 70+10+10: 
-                #10% chance
+                item = Object(x, y, '#', 'exorcism note', libtcod.light_yellow, item=item_component)
+            elif dice < 70+10+10:
+                #(10% chance)
                 item_component = Item(use_function=cast_fireball)
-                item = Object(x, y, '#' 'fireball note', libtcod.light_yellow, item=item_component)
+                item = Object(x, y, '#', 'fireball note', libtcod.light_yellow, item=item_component)
             else:
+                #(10% chance)
                 item_component = Item(use_function=cast_confuse)
                 item = Object(x, y, '#', 'confusion note', libtcod.light_yellow, item=item_component)
-            
+ 
             objects.append(item)
-            item.send_to_back() 
+            item.send_to_back()  #items appear below other objects
  
  
 def render_bar(x, y, total_width, name, value, maximum, bar_color, back_color):
@@ -577,19 +578,19 @@ def handle_keys():
             player_move_or_attack(-1, 0)
  
         elif key.vk == libtcod.KEY_RIGHT:
-            player_move_or_attack(1, 0)     
+            player_move_or_attack(1, 0)
         else:
             key_char = chr(key.c)
  
             if key_char == 'g':
-
-                for object in objects: 
+                #pick up an item
+                for object in objects:  
                     if object.x == player.x and object.y == player.y and object.item:
                         object.item.pick_up()
                         break
  
             if key_char == 'i':
-
+                #show the inventory; if an item is selected, use it
                 chosen_item = inventory_menu('Press the key next to an item to use it, or any other to cancel.\n')
                 if chosen_item is not None:
                     chosen_item.use()
@@ -604,7 +605,7 @@ def player_death(player):
  
     #for added effect, transform the player into a corpse!
     player.char = '%'
-    player.color = libtcod.dark_red
+    player.color = libtcod.Color(4, 106, 96)
  
 def target_tile(max_range=None):
     global key, mouse
@@ -625,15 +626,25 @@ def target_tile(max_range=None):
             
  
 def monster_death(monster):
-    message(monster.name.capitalize() + ' is dead!', libtcod.orange)
+    message(monster.name.capitalize() + ' is dead!', libtcod.Color(109, 160, 6))
     monster.char = '%'
-    monster.color = libtcod.dark_red
+    monster.color = libtcod.Color(109, 160, 6)
     monster.blocks = False
     monster.fighter = None
     monster.ai = None
     monster.name = 'remains of ' + monster.name
     monster.send_to_back()
-    
+
+def target_monster(max_range=None):
+    while True:
+        (x, y) = target_tile(max_range)
+        if x is None:  
+            return None
+ 
+        for obj in objects:
+            if obj.x == x and obj.y == y and obj.fighter and obj != player:
+                return obj
+  
 def closest_monster(max_range):
     closest_enemy = None
     closest_dist = max_range + 1
@@ -683,15 +694,14 @@ def cast_fireball():
             obj.fighter.take_damage(FIREBALL_DAMAGE)
 
 def cast_confuse():
-    monster = closest_monster(CONFUSE_RANGE)
-    if monster is None:
-        message('No enemy is close enough to confuse.', libtcod.red)
-        return 'cancelled'
-        
+    message('Left-click an enemy to confuse it, or right-click to cancel.', libtcod.light_cyan)
+    monster = target_monster(CONFUSE_RANGE)
+    if monster is None: return 'cancelled'
+ 
     #replace the monster's AI with a "confused" one; after some turns it will restore the old AI
     old_ai = monster.ai
     monster.ai = ConfusedMonster(old_ai)
-    monster.ai.owner = monster
+    monster.ai.owner = monster  
     message('The eyes of the ' + monster.name + ' look vacant, as he starts to stumble around!', libtcod.light_green)
  
 #                            #
