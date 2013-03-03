@@ -269,13 +269,8 @@ def make_map():
                 player.x = new_x
                 player.y = new_y
             else:
-                #all rooms after the first:
-                #connect it to the previous room with a tunnel
- 
-                #center coordinates of previous room
                 (prev_x, prev_y) = rooms[num_rooms-1].center()
  
-                #draw a coin (random number that is either 0 or 1)
                 if libtcod.random_get_int(0, 0, 1) == 1:
                     #first move horizontally, then vertically
                     create_h_tunnel(prev_x, new_x, prev_y)
@@ -285,13 +280,11 @@ def make_map():
                     create_v_tunnel(prev_y, new_y, prev_x)
                     create_h_tunnel(prev_x, new_x, new_y)
  
-            #finally, append the new room to the list
             rooms.append(new_room)
             num_rooms += 1
  
  
 def place_objects(room):
-    #choose random number of monsters
     num_monsters = libtcod.random_get_int(0, 0, MAX_ROOM_MONSTERS)
  
     for i in range(num_monsters):
@@ -301,7 +294,7 @@ def place_objects(room):
  
         #only place it if the tile is not blocked
         if not is_blocked(x, y):
-            if libtcod.random_get_int(0, 0, 100) < 80:  #80% chance of getting an orc
+            if libtcod.random_get_int(0, 0, 100) < 80:  #80% chance of getting an hiki
                 #create an orc
                 fighter_component = Fighter(hp=10, defense=0, power=3, death_function=monster_death)
                 ai_component = BasicMonster()
@@ -309,29 +302,30 @@ def place_objects(room):
                 monster = Object(x, y, 'h', 'hiki', libtcod.desaturated_green,
                     blocks=True, fighter=fighter_component, ai=ai_component)
             else:
-                #create a troll
                 fighter_component = Fighter(hp=16, defense=1, power=4, death_function=monster_death)
                 ai_component = BasicMonster()
  
-                monster = Object(x, y, 'U', 'ubo', libtcod.darker_green,
+                monster = Object(x, y, 'U', 'Ubo', libtcod.darker_green,
                     blocks=True, fighter=fighter_component, ai=ai_component)
  
             objects.append(monster)
-            
-        num_items = libtcod.random_get_int(0, 0, MAX_ROOM_ITEMS)
-        
-        for i in range(num_items):
-            x = libtcod.random_get_int(0, room.x1+1, room.x2-1)
-            y = libtcod.random_get_int(0, room.y1+1, room.y2-1)
-            
-            if  not is_blocked(x, y):
-                item = Object(x, y, '!', 'healing potion', libtcod.normal_chartreuse)
-                
-                objects.append(item)
-                item.send_to_back()
-                
-            item_component = Item()
+ 
+    #choose random number of items
+    num_items = libtcod.random_get_int(0, 0, MAX_ROOM_ITEMS)
+ 
+    for i in range(num_items):
+        x = libtcod.random_get_int(0, room.x1+1, room.x2-1)
+        y = libtcod.random_get_int(0, room.y1+1, room.y2-1)
+ 
+        #only place it if the tile is not blocked
+        if not is_blocked(x, y):
+            item_component = Item(use_function=cast_heal)
+ 
             item = Object(x, y, '!', 'healing potion', libtcod.violet, item=item_component)
+ 
+            objects.append(item)
+            item.send_to_back() 
+ 
  
 def render_bar(x, y, total_width, name, value, maximum, bar_color, back_color):
     #render a bar (HP, experience, etc). first calculate the width of the bar
