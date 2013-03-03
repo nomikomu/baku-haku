@@ -164,6 +164,11 @@ class Fighter:
                 function = self.death_function
                 if function is not None:
                     function(self.owner)
+                    
+    def heal(self, amount):
+        self.hp += amount
+        if self.hp > self.max_hp:
+            self.hp = self.max_hp
  
 class BasicMonster:
     #AI for a basic monster.
@@ -181,6 +186,9 @@ class BasicMonster:
                 monster.fighter.attack(player)
  
 class Item:
+    def __init__(self, use_function=None):
+        self.use_function = use_function
+	
     def pick_up(self):
         if len(inventory) >= 26:
             message('Your inventory is full, cannot pick up ' + self.owner.name + '.', libtcod.red)
@@ -188,7 +196,14 @@ class Item:
             inventory.append(self.owner)
             objects.remove(self.owner)
             message('You picked up a ' + self.owner.name + '!', libtcod.green)
- 
+    
+    def use(self):
+        if self.use_function is None:
+            message('The ' + self.owner.name + ' cannot be used.')
+        else:
+            if self.use_function() != 'cancelled':
+                inventory.remove(self.owner)
+            
 def is_blocked(x, y):
     #first test the map tile
     if map[x][y].blocked:
@@ -551,6 +566,14 @@ def monster_death(monster):
     monster.ai = None
     monster.name = 'remains of ' + monster.name
     monster.send_to_back()
+    
+def cast_heal():
+    if player.fighter.hp == player.fighter.max_hp:
+        message('You are already at full health.', libtcod.red)
+        return 'cancelled'
+    
+    message('Your wounds start to feel better!', libtcod.light_violet)
+    player.fighter.heal(HEAL_AMOUNT)
  
  
 #                            #
