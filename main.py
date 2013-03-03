@@ -24,8 +24,11 @@ ROOM_MIN_SIZE = 6
 MAX_ROOMS = 30
 MAX_ROOM_MONSTERS = 3
 MAX_ROOM_ITEMS = 2
- 
+
+#for cast 
 HEAL_AMOUNT = 4 
+LIGHTNING_DAMAGE = 20
+LIGHTNING_RANGE = 5
  
 FOV_ALGO = 0  #default FOV algorithm
 FOV_LIGHT_WALLS = True  #light walls or not
@@ -331,15 +334,20 @@ def place_objects(room):
     num_items = libtcod.random_get_int(0, 0, MAX_ROOM_ITEMS)
  
     for i in range(num_items):
+
         x = libtcod.random_get_int(0, room.x1+1, room.x2-1)
         y = libtcod.random_get_int(0, room.y1+1, room.y2-1)
  
         #only place it if the tile is not blocked
         if not is_blocked(x, y):
-            item_component = Item(use_function=cast_heal)
- 
-            item = Object(x, y, '!', 'healing potion', libtcod.violet, item=item_component)
- 
+            dice = libtcod.random_get_int(0, 0, 100)
+            if dice < 70:
+                item_component = Item(use_function=cast_heal)
+                item = Object(x, y, '!', 'healing potion', libtcod.violet, item=item_component)
+            elif dice < 70+10: #30% chance
+                item_component = Item(use_function=cast_heal)
+                item = Object(x, y, '#', 'exorcism note(throw)', libtcod.light_yellow, item=item_component)
+            
             objects.append(item)
             item.send_to_back() 
  
@@ -577,6 +585,22 @@ def monster_death(monster):
     monster.name = 'remains of ' + monster.name
     monster.send_to_back()
     
+def closest_monster(max_range):
+    closest_enemy = None
+    closest_dist = max_range + 1
+    
+    for object in objects:
+        if object.fighter and not object == player and libtcod.map_is_in_fov(fov_map, object.x, object.y):
+            dist = player.distance_to(object)
+            if dist < closest_dist:
+                closest_enemy = object
+                closest_dist = dist
+    return closest_enemy
+
+
+#          ~ cast ~          #
+
+
 def cast_heal():
 
     if player.fighter.hp == player.fighter.max_hp:
@@ -585,6 +609,18 @@ def cast_heal():
  
     message('Your wounds start to feel better!', libtcod.light_violet)
     player.fighter.heal(HEAL_AMOUNT)
+    
+def cast_lightning():
+    
+    monster = closest_monster(LIGHTNING_RANGE)
+    if monster is None:
+        message('No enemy is close enough to strike.', libtcod.red)
+        return 'cancelled'
+    
+    #zap it!
+    message('A exorcism note strikes the ' + monster.name + ' with a loud thunder! The damage is '
+        + str(LIGHTNING_DAMAGE) + ' hit points.', libtcod.light_blue)
+    monster.fighter.take_damage(LIGHTNING_DAMAGE)
  
  
 #                            #
