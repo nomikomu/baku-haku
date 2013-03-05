@@ -287,7 +287,8 @@ def create_v_tunnel(y1, y2, x):
  
 def make_map():
     global map, objects, stairs
-    
+ 
+    #the list of objects with just the player
     objects = [player]
  
     #fill map with "blocked" tiles
@@ -333,6 +334,7 @@ def make_map():
                 player.x = new_x
                 player.y = new_y
             else:
+                #center coordinates of previous room
                 (prev_x, prev_y) = rooms[num_rooms-1].center()
  
                 if libtcod.random_get_int(0, 0, 1) == 1:
@@ -346,8 +348,7 @@ def make_map():
  
             rooms.append(new_room)
             num_rooms += 1
-            
-    #create stairs at the center of the last room
+ 
     stairs = Object(new_x, new_y, '<', 'stairs', libtcod.white, always_visible=True)
     objects.append(stairs)
     stairs.send_to_back()  
@@ -393,7 +394,7 @@ def place_objects(room):
     #chance of each item (by default they have a chance of 0 at level 1, which then goes up)
     item_chances = {}
     item_chances['heal'] = 35  #healing potion always shows up, even if all other items have 0 chance
-    item_chances['lightning'] = from_dungeon_level([[25, 4]])
+    item_chances['exorcism'] = from_dungeon_level([[25, 4]])
     item_chances['fireball'] =  from_dungeon_level([[25, 6]])
     item_chances['confuse'] =   from_dungeon_level([[10, 2]])
  
@@ -639,12 +640,13 @@ def msgbox(text, width=50):
 
 def handle_keys():
     global key;
-
+ 
     if key.vk == libtcod.KEY_ENTER and key.lalt:
+        #Alt+Enter: toggle fullscreen
         libtcod.console_set_fullscreen(not libtcod.console_is_fullscreen())
-        
+ 
     elif key.vk == libtcod.KEY_ESCAPE:
-        return 'exit'  #exit game
+        return 'exit'
  
     if game_state == 'playing':
         #movement keys
@@ -667,39 +669,36 @@ def handle_keys():
         elif key.vk == libtcod.KEY_KP5:
             pass  #do nothing ie wait for the monster to come to you
         else:
+            #test for other keys
             key_char = chr(key.c)
  
             if key_char == 'g':
                 #pick up an item
-                for object in objects:  
+                for object in objects: 
                     if object.x == player.x and object.y == player.y and object.item:
                         object.item.pick_up()
                         break
  
             if key_char == 'i':
-                #show the inventory; if an item is selected, use it
                 chosen_item = inventory_menu('Press the key next to an item to use it, or any other to cancel.\n')
                 if chosen_item is not None:
                     chosen_item.use()
-                    
+ 
             if key_char == 'd':
-                #show the inventory; if an item is selected, drop it
                 chosen_item = inventory_menu('Press the key next to an item to drop it, or any other to cancel.\n')
                 if chosen_item is not None:
                     chosen_item.drop()
-                    
+ 
             if key_char == 'c':
-                #show character information
                 level_up_xp = LEVEL_UP_BASE + player.level * LEVEL_UP_FACTOR
                 msgbox('Character Information\n\nLevel: ' + str(player.level) + '\nExperience: ' + str(player.fighter.xp) +
                     '\nExperience to level up: ' + str(level_up_xp) + '\n\nMaximum HP: ' + str(player.fighter.max_hp) +
                     '\nAttack: ' + str(player.fighter.power) + '\nDefense: ' + str(player.fighter.defense), CHARACTER_SCREEN_WIDTH)
-                    
+ 
             if key_char == '<':
-                #go down stairs, if the player is on them
                 if stairs.x == player.x and stairs.y == player.y:
                     next_level()
-                    
+ 
             return 'didnt-take-turn'
 
 def check_level_up():
