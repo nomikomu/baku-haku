@@ -529,7 +529,9 @@ def render_all():
     #blit the contents of "con" to the root console
     libtcod.console_blit(con, 0, 0, MAP_WIDTH, MAP_HEIGHT, 0, 0, 0)
  
- 
+    ##     ##  
+    ## GUI ##
+    ##     ## 
     #prepare to render the GUI panel
     libtcod.console_set_default_background(panel, libtcod.black)
     libtcod.console_clear(panel)
@@ -981,7 +983,13 @@ panel = libtcod.console_new(SCREEN_WIDTH, PANEL_HEIGHT)
 #install gentoo
 main_menu()
  
- 
+#              /     \
+#              vvvvvvv  /|__/|
+#                 I   /O,O   |
+#                 I /_____   |      /|/|
+#                J|/^ ^ ^ \  |    /00  |    _//|
+#                 |^ ^ ^ ^ |W|   |/^^\ |   /oo |
+#                  \m___m__|_|    \m_m_|   \mm_|
  
 
  
