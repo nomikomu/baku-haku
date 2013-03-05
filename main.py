@@ -18,6 +18,10 @@ PANEL_Y = SCREEN_HEIGHT - PANEL_HEIGHT
 MSG_X = BAR_WIDTH + 2
 MSG_WIDTH = SCREEN_WIDTH - BAR_WIDTH - 2
 MSG_HEIGHT = PANEL_HEIGHT - 1
+
+LEVEL_SCREEN_WIDTH = 40
+CHARACTER_SCREEN_WIDTH = 30
+
 INVENTORY_WIDTH = 50
 
 #rooms
@@ -35,6 +39,10 @@ CONFUSE_NUM_TURNS = 10.
 CONFUSE_RANGE = 8
 FIREBALL_RADIUS = 3
 FIREBALL_DAMAGE = 12
+
+#experience and level-ups
+LEVEL_UP_BASE = 200
+LEVEL_UP_FACTOR = 150
  
 FOV_ALGO = 0  #default FOV algorithm
 FOV_LIGHT_WALLS = True  #light walls or not
@@ -151,11 +159,12 @@ class Object:
  
 class Fighter:
     #combat-related properties and methods (monster, player, NPC).
-    def __init__(self, hp, defense, power, death_function=None):
+    def __init__(self, hp, defense, power, xp, death_function=None):
         self.max_hp = hp
         self.hp = hp
         self.defense = defense
         self.power = power
+        self.xp = xp
         self.death_function = death_function
  
     def attack(self, target):
@@ -179,6 +188,9 @@ class Fighter:
                 function = self.death_function
                 if function is not None:
                     function(self.owner)
+                    
+                if self.owner != player:
+                    player.fighter.xp += self.xp
                     
     def heal(self, amount):
         self.hp += amount
@@ -355,13 +367,13 @@ def place_objects(room):
         if not is_blocked(x, y):
             if libtcod.random_get_int(0, 0, 100) < 80:  #80% chance of getting an hiki
                 #create an orc
-                fighter_component = Fighter(hp=10, defense=0, power=3, death_function=monster_death)
+                fighter_component = Fighter(hp=10, defense=0, power=3, xp=35, death_function=monster_death)
                 ai_component = BasicMonster()
  
                 monster = Object(x, y, 'h', 'hiki', libtcod.desaturated_green,
                     blocks=True, fighter=fighter_component, ai=ai_component)
             else:
-                fighter_component = Fighter(hp=16, defense=1, power=4, death_function=monster_death)
+                fighter_component = Fighter(hp=16, defense=1, power=4, xp=100, death_function=monster_death)
                 ai_component = BasicMonster()
  
                 monster = Object(x, y, 'U', 'Ubo', libtcod.darker_green,
@@ -626,13 +638,44 @@ def handle_keys():
                 if chosen_item is not None:
                     chosen_item.drop()
                     
+            if key_char == 'c':
+                #show character information
+                level_up_xp = LEVEL_UP_BASE + player.level * LEVEL_UP_FACTOR
+                msgbox('Character Information\n\nLevel: ' + str(player.level) + '\nExperience: ' + str(player.fighter.xp) +
+                    '\nExperience to level up: ' + str(level_up_xp) + '\n\nMaximum HP: ' + str(player.fighter.max_hp) +
+                    '\nAttack: ' + str(player.fighter.power) + '\nDefense: ' + str(player.fighter.defense), CHARACTER_SCREEN_WIDTH)
+                    
             if key_char == '<':
                 #go down stairs, if the player is on them
                 if stairs.x == player.x and stairs.y == player.y:
                     next_level()
                     
             return 'didnt-take-turn'
- 
+
+def check_level_up():
+    #see if the player's experience is enough to level-up
+    level_up_xp = LEVEL_UP_BASE + player.level * LEVEL_UP_FACTOR
+    if player.fighter.xp >= level_up_xp:
+        #it is! level up
+        player.level += 1
+        player.fighter.xp -= level_up_xp
+        message('Your battle skills grow stronger! You reached level ' + str(player.level) + '!', libtcod.yellow)
+
+    choice = None
+    while choice == None:
+        choice = menu('Level up! Choose a stat to raise:\n',
+            ['Durability (+20HP, from ' + str(player.fighter.max_hp) + ')',
+            'Strength (+1 attack, from ' + str(player.fighter.power) + ')',
+            'Agility (+1 defense, from ' + str(player.fighter.defense) + ')'], LEVEL_SCREEN_WIDTH)
+            
+        if choice == 0:
+            player.fighter.max_hp += 20
+            player.fighter.hp += 20
+        elif choice == 1:
+            player.fighter.power += 1
+        elif choice == 2:
+            player.fighter.defense += 1
+        
 def player_death(player):
     #the game ended!
     global game_state
@@ -662,7 +705,7 @@ def target_tile(max_range=None):
             
  
 def monster_death(monster):
-    message(monster.name.capitalize() + ' is dead!', libtcod.Color(109, 160, 6))
+    message('The ' + monster.name + ' is dead! You gain ' + str(monster.fighter.xp) + ' experience points.', libtcod.Color(109, 160, 6))
     monster.char = '%'
     monster.color = libtcod.Color(109, 160, 6)
     monster.blocks = False
@@ -776,8 +819,10 @@ def new_game():
     global player, inventory, game_msgs, game_state, dungeon_level
     
     #create object representing the player
-    fighter_component = Fighter(hp=30, defense=2, power=5, death_function=player_death)
+    fighter_component = Fighter(hp=30, defense=2, power=5, xp=0, death_function=player_death)
     player = Object(0, 0, '@', 'player', libtcod.white, blocks=True, fighter=fighter_component)
+    
+    player.level = 1
     
     #generate map (at this point it's not drawn to the screen)
     dungeon_level = 1
@@ -828,7 +873,8 @@ def play_game():
         render_all()
  
         libtcod.console_flush()
- 
+
+        check_level_up()
 
         for object in objects:
             object.clear()
