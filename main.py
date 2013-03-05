@@ -370,11 +370,36 @@ def random_choice(chances_dict):
     
     return strings[random_choice_index(chances)]
 
+def from_dungeon_level(table):
+    for (value, level) in reversed(table):
+        if dungeon_level >= level:
+            return value
+    return 0
 
 def place_objects(room):
+    #this is where we decide the chance of each monster or item appearing.
+ 
+    #maximum number of monsters per room
     max_monsters = from_dungeon_level([[2, 1], [3, 4], [5, 6]])
-    
+ 
+    #chance of each monster
     monster_chances = {}
+    monster_chances['hiki'] = 80  #orc always shows up, even if all other monsters have 0 chance
+    monster_chances['ubo'] = from_dungeon_level([[15, 3], [30, 5], [60, 7]])
+ 
+    #maximum number of items per room
+    max_items = from_dungeon_level([[1, 1], [2, 4]])
+ 
+    #chance of each item (by default they have a chance of 0 at level 1, which then goes up)
+    item_chances = {}
+    item_chances['heal'] = 35  #healing potion always shows up, even if all other items have 0 chance
+    item_chances['lightning'] = from_dungeon_level([[25, 4]])
+    item_chances['fireball'] =  from_dungeon_level([[25, 6]])
+    item_chances['confuse'] =   from_dungeon_level([[10, 2]])
+ 
+ 
+    #choose random number of monsters
+    num_monsters = libtcod.random_get_int(0, 0, max_monsters)
  
     for i in range(num_monsters):
         #choose random spot for this monster
@@ -383,24 +408,25 @@ def place_objects(room):
  
         #only place it if the tile is not blocked
         if not is_blocked(x, y):
-            if libtcod.random_get_int(0, 0, 100) < 80:  #80% chance of getting an hiki
-                #create an orc
-                fighter_component = Fighter(hp=10, defense=0, power=3, xp=35, death_function=monster_death)
+            choice = random_choice(monster_chances)
+            if choice == 'hiki':
+                fighter_component = Fighter(hp=20, defense=0, power=4, xp=35, death_function=monster_death)
                 ai_component = BasicMonster()
  
                 monster = Object(x, y, 'h', 'hiki', libtcod.desaturated_green,
                     blocks=True, fighter=fighter_component, ai=ai_component)
-            else:
-                fighter_component = Fighter(hp=16, defense=1, power=4, xp=100, death_function=monster_death)
+ 
+            elif choice == 'ubo':
+                fighter_component = Fighter(hp=30, defense=2, power=8, xp=100, death_function=monster_death)
                 ai_component = BasicMonster()
  
-                monster = Object(x, y, 'U', 'Ubo', libtcod.darker_green,
+                monster = Object(x, y, 'U', 'ubo', libtcod.darker_green,
                     blocks=True, fighter=fighter_component, ai=ai_component)
  
             objects.append(monster)
  
     #choose random number of items
-    num_items = libtcod.random_get_int(0, 0, MAX_ROOM_ITEMS)
+    num_items = libtcod.random_get_int(0, 0, max_items)
  
     for i in range(num_items):
         
@@ -411,7 +437,7 @@ def place_objects(room):
             choice = random_choice(item_chances)
             if choice == 'heal':
                 item_component = Item(use_function=cast_heal)
-                item = Object(x, y, '!', 'healing potion', libtcod.violet, item=item_component)
+                item = Object(x, y, '!', 'healing potion', libtcod.Color(121, 250, 30), item=item_component)
  
             elif choice == 'exorcism':
                 item_component = Item(use_function=cast_lightning)
@@ -843,7 +869,7 @@ def new_game():
     global player, inventory, game_msgs, game_state, dungeon_level
  
     #create object representing the player
-    fighter_component = Fighter(hp=30, defense=2, power=5, xp=0, death_function=player_death)
+    fighter_component = Fighter(hp=100, defense=1, power=4, xp=0, death_function=player_death)
     player = Object(0, 0, '@', 'player', libtcod.white, blocks=True, fighter=fighter_component)
  
     player.level = 1
