@@ -28,17 +28,15 @@ INVENTORY_WIDTH = 50
 ROOM_MAX_SIZE = 10
 ROOM_MIN_SIZE = 6
 MAX_ROOMS = 30
-MAX_ROOM_MONSTERS = 3
-MAX_ROOM_ITEMS = 2
 
 #for cast
-HEAL_AMOUNT = 4 
-LIGHTNING_DAMAGE = 20
+HEAL_AMOUNT = 40
+LIGHTNING_DAMAGE = 40
 LIGHTNING_RANGE = 5
-CONFUSE_NUM_TURNS = 10.
+CONFUSE_NUM_TURNS = 10
 CONFUSE_RANGE = 8
 FIREBALL_RADIUS = 3
-FIREBALL_DAMAGE = 12
+FIREBALL_DAMAGE = 25
 
 #experience and level-ups
 LEVEL_UP_BASE = 200
@@ -188,10 +186,10 @@ class Fighter:
                 function = self.death_function
                 if function is not None:
                     function(self.owner)
-                    
-                if self.owner != player:
+ 
+                if self.owner != player:  
                     player.fighter.xp += self.xp
-                    
+                                        
     def heal(self, amount):
         self.hp += amount
         if self.hp > self.max_hp:
@@ -354,9 +352,29 @@ def make_map():
     objects.append(stairs)
     stairs.send_to_back()  
  
+def random_choice_index(chances):  
+    dice = libtcod.random_get_int(0, 1, sum(chances))
+
+    running_sum = 0
+    choice = 0
+    for w in chances:
+        running_sum += w
  
+        if dice <= running_sum:
+            return choice
+        choice += 1
+        
+def random_choice(chances_dict):
+    chances = chances_dict.values()
+    strings = chances_dict.keys()
+    
+    return strings[random_choice_index(chances)]
+
+
 def place_objects(room):
-    num_monsters = libtcod.random_get_int(0, 0, MAX_ROOM_MONSTERS)
+    max_monsters = from_dungeon_level([[2, 1], [3, 4], [5, 6]])
+    
+    monster_chances = {}
  
     for i in range(num_monsters):
         #choose random spot for this monster
@@ -385,32 +403,31 @@ def place_objects(room):
     num_items = libtcod.random_get_int(0, 0, MAX_ROOM_ITEMS)
  
     for i in range(num_items):
-
+        
         x = libtcod.random_get_int(0, room.x1+1, room.x2-1)
         y = libtcod.random_get_int(0, room.y1+1, room.y2-1)
  
-
         if not is_blocked(x, y):
-            dice = libtcod.random_get_int(0, 0, 100)
-            if dice < 70:
-                #(70% chance)
+            choice = random_choice(item_chances)
+            if choice == 'heal':
                 item_component = Item(use_function=cast_heal)
-                item = Object(x, y, '!', 'healing potion', libtcod.Color(207, 247, 0), item=item_component)
-            elif dice < 70+10:
-                #(10% chance)
+                item = Object(x, y, '!', 'healing potion', libtcod.violet, item=item_component)
+ 
+            elif choice == 'exorcism':
                 item_component = Item(use_function=cast_lightning)
                 item = Object(x, y, '#', 'exorcism note', libtcod.light_yellow, item=item_component)
-            elif dice < 70+10+10:
-                #(10% chance)
+ 
+            elif choice == 'fireball':
                 item_component = Item(use_function=cast_fireball)
                 item = Object(x, y, '#', 'fireball note', libtcod.light_yellow, item=item_component)
-            else:
-                #(10% chance)
+ 
+            elif choice == 'confuse':
                 item_component = Item(use_function=cast_confuse)
                 item = Object(x, y, '#', 'confusion note', libtcod.light_yellow, item=item_component)
  
             objects.append(item)
             item.send_to_back()  #items appear below other objects
+            item.always_visible = True
  
  
 def render_bar(x, y, total_width, name, value, maximum, bar_color, back_color):
@@ -663,18 +680,18 @@ def check_level_up():
     #see if the player's experience is enough to level-up
     level_up_xp = LEVEL_UP_BASE + player.level * LEVEL_UP_FACTOR
     if player.fighter.xp >= level_up_xp:
-        #it is! level up
+        #it is! level up and ask to raise some stats
         player.level += 1
         player.fighter.xp -= level_up_xp
         message('Your battle skills grow stronger! You reached level ' + str(player.level) + '!', libtcod.yellow)
-
-    choice = None
-    while choice == None:
-        choice = menu('Level up! Choose a stat to raise:\n',
-            ['Durability (+20HP, from ' + str(player.fighter.max_hp) + ')',
-            'Strength (+1 attack, from ' + str(player.fighter.power) + ')',
-            'Agility (+1 defense, from ' + str(player.fighter.defense) + ')'], LEVEL_SCREEN_WIDTH)
-            
+ 
+        choice = None
+        while choice == None:  #keep asking until a choice is made
+            choice = menu('Level up! Choose a stat to raise:\n',
+                ['Durability (+20 HP, from ' + str(player.fighter.max_hp) + ')',
+                'Strength (+1 attack, from ' + str(player.fighter.power) + ')',
+                'Agility (+1 defense, from ' + str(player.fighter.defense) + ')'], LEVEL_SCREEN_WIDTH)
+ 
         if choice == 0:
             player.fighter.max_hp += 20
             player.fighter.hp += 20
@@ -824,21 +841,21 @@ def load_game():
     
 def new_game():
     global player, inventory, game_msgs, game_state, dungeon_level
-    
+ 
     #create object representing the player
     fighter_component = Fighter(hp=30, defense=2, power=5, xp=0, death_function=player_death)
     player = Object(0, 0, '@', 'player', libtcod.white, blocks=True, fighter=fighter_component)
-    
+ 
     player.level = 1
-    
+ 
     #generate map (at this point it's not drawn to the screen)
     dungeon_level = 1
     make_map()
     initialize_fov()
-    
+ 
     game_state = 'playing'
-    inventory = [] 
-    
+    inventory = []
+ 
     #create the list of game messages and their colors, starts empty
     game_msgs = []
     
