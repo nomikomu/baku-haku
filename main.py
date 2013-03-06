@@ -792,12 +792,9 @@ def target_tile(max_range=None):
         if mouse.rbutton_pressed or key.vk == libtcod.KEY_ESCAPE:
             return (None, None)
             
-        if (mouse.lbutton_pressed and libtcod.map_is_in_fov(fov_map, x, y) and
-            (max_range is None or player.distance(x, y) <= max_range)):
             return (x,y)
-            
-            
- 
+
+
 def monster_death(monster):
     message('The ' + monster.name + ' is dead! You gain ' + str(monster.fighter.xp) + ' experience points.', libtcod.Color(109, 160, 6))
     monster.char = '%'
@@ -813,15 +810,15 @@ def target_monster(max_range=None):
         (x, y) = target_tile(max_range)
         if x is None:  
             return None
- 
+
         for obj in objects:
             if obj.x == x and obj.y == y and obj.fighter and obj != player:
                 return obj
-  
+
 def closest_monster(max_range):
     closest_enemy = None
     closest_dist = max_range + 1
-    
+
     for object in objects:
         if object.fighter and not object == player and libtcod.map_is_in_fov(fov_map, object.x, object.y):
             dist = player.distance_to(object)
@@ -831,25 +828,25 @@ def closest_monster(max_range):
     return closest_enemy
 
 
-#          ~ cast ~          #
-
+#      ~ cast ~       #
+#                     #
 
 def cast_heal():
 
     if player.fighter.hp == player.fighter.max_hp:
         message('You are already at full health.', libtcod.red)
         return 'cancelled'
- 
+
     message('Your wounds start to feel better!', libtcod.light_violet)
     player.fighter.heal(HEAL_AMOUNT)
-    
+
 def cast_lightning():
-    
+
     monster = closest_monster(LIGHTNING_RANGE)
     if monster is None:
         message('No enemy is close enough to strike.', libtcod.red)
         return 'cancelled'
-    
+
     #zap it!
     message('A exorcism note strikes the ' + monster.name + ' with a loud thunder! The damage is '
         + str(LIGHTNING_DAMAGE) + ' hit points.', libtcod.light_blue)
@@ -860,7 +857,7 @@ def cast_fireball():
     (x, y) = target_tile()
     if x is None: return 'cancelled'
     message('The fireball explodes, burning everything within ' + str(FIREBALL_RADIUS) + ' tiles!', libtcod.orange)
-    
+
     for obj in objects:
         if obj.distance(x, y) <= FIREBALL_RADIUS and obj.fighter:
             message('The ' + obj.name + ' gets burned for ' + str(FIREBALL_DAMAGE) + ' hit points.', libtcod.orange)
@@ -870,13 +867,13 @@ def cast_confuse():
     message('Left-click an enemy to confuse it, or right-click to cancel.', libtcod.light_cyan)
     monster = target_monster(CONFUSE_RANGE)
     if monster is None: return 'cancelled'
- 
+
     #replace the monster's AI with a "confused" one; after some turns it will restore the old AI
     old_ai = monster.ai
     monster.ai = ConfusedMonster(old_ai)
     monster.ai.owner = monster  
     message('The eyes of the ' + monster.name + ' look vacant, as he starts to stumble around!', libtcod.light_green)
- 
+
 #                       # 
 # ~ MENU x GAME STATE ~ #
 #                       #
@@ -892,10 +889,10 @@ def save_game():
     file['game_state'] = game_state
     file['dungeon_level'] = dungeon_level
     file.close()
-    
+
 def load_game():
     global map, objects, player, stairs, inventory, game_msgs, game_state, dungeon_level
- 
+
     file = shelve.open('savegame', 'r')
     map = file['map']
     objects = file['objects']
@@ -906,66 +903,66 @@ def load_game():
     game_state = file['game_state']
     dungeon_level = file['dungeon_level']
     file.close()
- 
+
     initialize_fov()
-    
+
 def new_game():
     global player, inventory, game_msgs, game_state, dungeon_level
- 
+
     #create object representing the player
     fighter_component = Fighter(hp=100, defense=1, power=4, xp=0, death_function=player_death)
     player = Object(0, 0, '@', 'player', libtcod.white, blocks=True, fighter=fighter_component)
- 
+
     player.level = 1
- 
+
     #generate map (at this point it's not drawn to the screen)
     dungeon_level = 1
     make_map()
     initialize_fov()
- 
+
     game_state = 'playing'
     inventory = []
- 
+
     #create the list of game messages and their colors, starts empty
     game_msgs = []
-    
+
     #a warm welcoming message!
     message('Ohayo mi8-X01-sama.', libtcod.red)
-    
+
 def next_level():
     #advance to the next level
     global dungeon_level
     message('You take a moment to rest, and recover your strength.', libtcod.light_violet)
     player.fighter.heal(player.fighter.max_hp / 2)  #heal player +50%
- 
+
     dungeon_level += 1
     message('After a rare moment of peace, you descend deeper into the heart of the dungeon...', libtcod.red)
     make_map()  
     initialize_fov()
-    
+
 def initialize_fov():
     global fov_recompute, fov_map
     fov_recompute = True
-    
+
     fov_map = libtcod.map_new(MAP_WIDTH, MAP_HEIGHT)
     for y in range(MAP_HEIGHT):
         for x in range(MAP_WIDTH):
             libtcod.map_set_properties(fov_map, x, y, not map[x][y].block_sight, not map[x][y].blocked)
-    
+
     libtcod.console_clear(con)  #unexplored areas start black (which is the default background color)
-            
+
 def play_game():
     global key, mouse
-    
+
     player_action = None
-    
+
     mouse = libtcod.Mouse()
     key = libtcod.Key()
     while not libtcod.console_is_window_closed():
 
         libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,key,mouse)
         render_all()
- 
+
         libtcod.console_flush()
 
         check_level_up()
@@ -977,28 +974,28 @@ def play_game():
         if player_action == 'exit':
             save_game()
             break
- 
+
         if game_state == 'playing' and player_action != 'didnt-take-turn':
             for object in objects:
                 if object.ai:
                     object.ai.take_turn()
-                    
+
 def main_menu():
     img = libtcod.image_load('BG_IMG.png')
- 
+
     while not libtcod.console_is_window_closed():
         #show the background image, at twice the regular console resolution
         libtcod.image_blit_2x(img, 0, 0, 0)
- 
+
         #show the game's title, and some credits!
         libtcod.console_set_default_foreground(0, libtcod.Color(79, 227, 0))
         libtcod.console_print_ex(0, SCREEN_WIDTH/2, SCREEN_HEIGHT/2-4, libtcod.BKGND_NONE, libtcod.CENTER,
             'mi8-reEVA')
         libtcod.console_print_ex(0, SCREEN_WIDTH/2, SCREEN_HEIGHT/2+4, libtcod.BKGND_NONE, libtcod.CENTER,
             'by defined moe.')
-        
+
         choice = menu('', ['start game', 'continue', 'quit'], 24)
-        
+
         if choice == 0:
             new_game()
             play_game()
@@ -1012,7 +1009,6 @@ def main_menu():
         elif choice == 2:  #quit
             break
 
-    
 #                            #
 # initialization & main loop #
 #                            #
@@ -1022,10 +1018,9 @@ libtcod.console_init_root(SCREEN_WIDTH, SCREEN_HEIGHT, 'python/libtcod tutorial'
 libtcod.sys_set_fps(LIMIT_FPS)
 con = libtcod.console_new(MAP_WIDTH, MAP_HEIGHT)
 panel = libtcod.console_new(SCREEN_WIDTH, PANEL_HEIGHT)
- 
-#install gentoo
+
 main_menu()
- 
+
 #              /     \
 #              vvvvvvv  /|__/|
 #                 I   /O,O   |
@@ -1033,8 +1028,3 @@ main_menu()
 #                J|/^ ^ ^ \  |    /00  |    _//|
 #                 |^ ^ ^ ^ |W|   |/^^\ |   /oo |
 #                  \m___m__|_|    \m_m_|   \mm_|
- 
-
- 
-
- 
