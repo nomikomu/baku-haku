@@ -3,7 +3,7 @@ import math
 import textwrap
 import shelve
  
-#size of window 
+#size of window
 SCREEN_WIDTH = 80
 SCREEN_HEIGHT = 50
  
@@ -42,11 +42,11 @@ FIREBALL_DAMAGE = 25
 LEVEL_UP_BASE = 200
 LEVEL_UP_FACTOR = 150
  
-FOV_ALGO = 0  #default FOV algorithm
-FOV_LIGHT_WALLS = True  #light walls or not
+FOV_ALGO = 0 #default FOV algorithm
+FOV_LIGHT_WALLS = True #light walls or not
 TORCH_RADIUS = 10
  
-LIMIT_FPS = 25  #25 fps max
+LIMIT_FPS = 25 #25 fps max
  
  
 color_dark_wall = libtcod.Color(178, 201, 22)
@@ -102,7 +102,7 @@ class Object:
             self.fighter.owner = self
  
         self.ai = ai
-        if self.ai: 
+        if self.ai:
             self.ai.owner = self
         
         self.item = item
@@ -110,8 +110,8 @@ class Object:
             self.item.owner = self
 
         self.equipment = equipment
-        if self.equipment:  
-            self.equipment.owner = self    
+        if self.equipment:
+            self.equipment.owner = self
             
             self.item = Item()
             self.item.owner = self
@@ -195,7 +195,7 @@ class Fighter:
                 if function is not None:
                     function(self.owner)
  
-                if self.owner != player:  
+                if self.owner != player:
                     player.fighter.xp += self.xp
                                         
     def heal(self, amount):
@@ -244,6 +244,10 @@ class Item:
             inventory.append(self.owner)
             objects.remove(self.owner)
             message('You picked up a ' + self.owner.name + '!', libtcod.green)
+            
+            equipment = self.owner.equipment
+            if equipment and get_equipped_in_slot(equipment.slot) is None:
+                equipment.equip()
     
     def drop(self):
         if self.owner.equipment:
@@ -264,14 +268,14 @@ class Item:
             message('The ' + self.owner.name + ' cannot be used.')
         else:
             if self.use_function() != 'cancelled':
-                inventory.remove(self.owner) 
+                inventory.remove(self.owner)
                 
 class Equipment:
     def __init__(self, slot):
         self.slot = slot
         self.is_equipped = False
  
-    def toggle_equip(self):  
+    def toggle_equip(self):
         #toggle equip/dequip status
         if self.is_equipped:
             self.dequip()
@@ -279,6 +283,10 @@ class Equipment:
             self.equip()
  
     def equip(self):
+        old_equipment = get_equipped_in_slot(self.slot)
+        if old_equipment is not None:
+            old_equipment.dequip()
+        
         #equip obj and show a msg
         self.is_equipped = True
         message('Equipped ' + self.owner.name + ' on ' + self.slot + '.', libtcod.light_green)
@@ -288,7 +296,13 @@ class Equipment:
         if not self.is_equipped: return
         self.is_equipped = False
         message('Dequipped ' + self.owner.name + ' from ' + self.slot + '.', libtcod.light_yellow)
-            
+     
+def get_equipped_in_slot(slot):
+    for obj in inventory:
+        if obj.equipment and obj.equipment.slot == slot and obj.equipment.is_equipped:
+            return obj.equipment
+    return None
+       
 def is_blocked(x, y):
     #first test the map tile
     if map[x][y].blocked:
@@ -389,9 +403,9 @@ def make_map():
  
     stairs = Object(new_x, new_y, '<', 'stairs', libtcod.white, always_visible=True)
     objects.append(stairs)
-    stairs.send_to_back()  
+    stairs.send_to_back()
  
-def random_choice_index(chances):  
+def random_choice_index(chances):
     dice = libtcod.random_get_int(0, 1, sum(chances))
 
     running_sum = 0
@@ -420,7 +434,7 @@ def place_objects(room):
 
     #chance of each monster
     monster_chances = {}
-    monster_chances['hiki'] = 80  #orc always shows up, even if all other monsters have 0 chance
+    monster_chances['hiki'] = 80 #orc always shows up, even if all other monsters have 0 chance
     monster_chances['ubo'] = from_dungeon_level([[15, 3], [30, 5], [60, 7]])
 
     #maximum number of items per room
@@ -428,11 +442,11 @@ def place_objects(room):
 
     #chance of each item (by default they have a chance of 0 at level 1, which then goes up)
     item_chances = {}
-    item_chances['heal'] = 35  #healing potion always shows up, even if all other items have 0 chance
+    item_chances['heal'] = 35 #healing potion always shows up, even if all other items have 0 chance
     item_chances['exorcism'] = from_dungeon_level([[25, 4]])
-    item_chances['fireball'] =  from_dungeon_level([[25, 6]])
-    item_chances['confuse'] =   from_dungeon_level([[10, 2]])
-    item_chances['sword'] =     from_dungeon_level([[5, 4]])
+    item_chances['fireball'] = from_dungeon_level([[25, 6]])
+    item_chances['confuse'] = from_dungeon_level([[10, 2]])
+    item_chances['sword'] = from_dungeon_level([[5, 4]])
  
 
     #choose random number of monsters
@@ -493,7 +507,7 @@ def place_objects(room):
                 item = Object(x, y, '/', 'sword', libtcod.sky, equipment=equipment_component)
 
             objects.append(item)
-            item.send_to_back()  #items appear below other objects
+            item.send_to_back() #items appear below other objects
             item.always_visible = True
  
 
@@ -525,7 +539,7 @@ def get_names_under_mouse():
     names = [obj.name for obj in objects
         if obj.x == x and obj.y == y and libtcod.map_is_in_fov(fov_map, obj.x, obj.y)]
 
-    names = ', '.join(names)  #join the names, separated by commas
+    names = ', '.join(names) #join the names, separated by commas
     return names.capitalize()
 
 def render_all():
@@ -569,9 +583,9 @@ def render_all():
     #blit the contents of "con" to the root console
     libtcod.console_blit(con, 0, 0, MAP_WIDTH, MAP_HEIGHT, 0, 0, 0)
  
-    ##     ##  
+    ## ##
     ## GUI ##
-    ##     ## 
+    ## ##
     #prepare to render the GUI panel
     libtcod.console_set_default_background(panel, libtcod.black)
     libtcod.console_clear(panel)
@@ -658,7 +672,7 @@ def menu(header, options, width):
     libtcod.console_flush()
     key = libtcod.console_wait_for_keypress(True)
 
-    if key.vk == libtcod.KEY_ENTER and key.lalt:  #(special case) Alt+Enter: toggle fullscreen
+    if key.vk == libtcod.KEY_ENTER and key.lalt: #(special case) Alt+Enter: toggle fullscreen
         libtcod.console_set_fullscreen(not libtcod.console_is_fullscreen())
 
     index = key.c - ord('a')
@@ -669,7 +683,13 @@ def inventory_menu(header):
     if len(inventory) == 0:
         options = ['Inventory is empty.']
     else:
-        options = [item.name for item in inventory]
+        options = []
+        for item in inventory:
+            text = item.name
+            #show additional info in case it's equipped
+            if item.equipment and item.equipment.is_equipped:
+                text = text + ' (on ' + item.equipment.slot + ')'
+            options.append(text)
 
     index = menu(header, options, INVENTORY_WIDTH)
 
@@ -677,7 +697,7 @@ def inventory_menu(header):
     return inventory[index].item
 
 def msgbox(text, width=50):
-    menu(text, [], width)  #use menu() as a sort of "message box"
+    menu(text, [], width) #use menu() as a sort of "message box"
 
 def handle_keys():
     global key;
@@ -708,14 +728,14 @@ def handle_keys():
         elif key.vk == libtcod.KEY_PAGEDOWN or key.vk == libtcod.KEY_KP3:
             player_move_or_attack(1, 1)
         elif key.vk == libtcod.KEY_KP5:
-            pass  #do nothing ie wait for the monster to come to you
+            pass #do nothing ie wait for the monster to come to you
         else:
             #test for other keys
             key_char = chr(key.c)
 
             if key_char == 'g':
                 #pick up an item
-                for object in objects: 
+                for object in objects:
                     if object.x == player.x and object.y == player.y and object.item:
                         object.item.pick_up()
                         break
@@ -752,7 +772,7 @@ def check_level_up():
         message('Your battle skills grow stronger! You reached level ' + str(player.level) + '!', libtcod.yellow)
 
         choice = None
-        while choice == None:  #keep asking until a choice is made
+        while choice == None: #keep asking until a choice is made
             choice = menu('Level up! Choose a stat to raise:\n',
                 ['Durability (+20 HP, from ' + str(player.fighter.max_hp) + ')',
                 'Strength (+1 attack, from ' + str(player.fighter.power) + ')',
@@ -806,7 +826,7 @@ def monster_death(monster):
 def target_monster(max_range=None):
     while True:
         (x, y) = target_tile(max_range)
-        if x is None:  
+        if x is None:
             return None
 
         for obj in objects:
@@ -826,8 +846,8 @@ def closest_monster(max_range):
     return closest_enemy
 
 
-#      ~ cast ~       #
-#                     #
+# ~ cast ~ #
+#          #
 
 def cast_heal():
 
@@ -869,10 +889,10 @@ def cast_confuse():
     #replace the monster's AI with a "confused" one; after some turns it will restore the old AI
     old_ai = monster.ai
     monster.ai = ConfusedMonster(old_ai)
-    monster.ai.owner = monster  
+    monster.ai.owner = monster
     message('The eyes of the ' + monster.name + ' look vacant, as he starts to stumble around!', libtcod.light_green)
 
-#                       # 
+#                       #
 # ~ MENU x GAME STATE ~ #
 #                       #
 
@@ -908,7 +928,7 @@ def new_game():
     global player, inventory, game_msgs, game_state, dungeon_level
 
     #create object representing the player
-    fighter_component = Fighter(hp=100, defense=1, power=4, xp=0, death_function=player_death)
+    fighter_component = Fighter(hp=100, defense=1, power=400, xp=0, death_function=player_death)
     player = Object(0, 0, '@', 'player', libtcod.white, blocks=True, fighter=fighter_component)
 
     player.level = 1
@@ -931,11 +951,11 @@ def next_level():
     #advance to the next level
     global dungeon_level
     message('You take a moment to rest, and recover your strength.', libtcod.light_violet)
-    player.fighter.heal(player.fighter.max_hp / 2)  #heal player +50%
+    player.fighter.heal(player.fighter.max_hp / 2) #heal player +50%
 
     dungeon_level += 1
     message('After a rare moment of peace, you descend deeper into the heart of the dungeon...', libtcod.red)
-    make_map()  
+    make_map()
     initialize_fov()
 
 def initialize_fov():
@@ -947,7 +967,7 @@ def initialize_fov():
         for x in range(MAP_WIDTH):
             libtcod.map_set_properties(fov_map, x, y, not map[x][y].block_sight, not map[x][y].blocked)
 
-    libtcod.console_clear(con)  #unexplored areas start black (which is the default background color)
+    libtcod.console_clear(con) #unexplored areas start black (which is the default background color)
 
 def play_game():
     global key, mouse
@@ -997,14 +1017,14 @@ def main_menu():
         if choice == 0:
             new_game()
             play_game()
-        if choice == 1:  #load last game
+        if choice == 1: #load last game
             try:
                 load_game()
             except:
                 msgbox('\n No saved game to load.\n', 24)
                 continue
             play_game()
-        elif choice == 2:  #quit
+        elif choice == 2: #quit
             break
 
 #                            #
