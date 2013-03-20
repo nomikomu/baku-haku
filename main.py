@@ -302,55 +302,52 @@ def get_equipped_in_slot(slot):
         if obj.equipment and obj.equipment.slot == slot and obj.equipment.is_equipped:
             return obj.equipment
     return None
-       
+
 def is_blocked(x, y):
     #first test the map tile
     if map[x][y].blocked:
         return True
- 
+
     #now check for any blocking objects
     for object in objects:
         if object.blocks and object.x == x and object.y == y:
             return True
- 
+
     return False
- 
+
 def create_room(room):
     global map
-    #go through the tiles in the rectangle and make them passable
     for x in range(room.x1 + 1, room.x2):
         for y in range(room.y1 + 1, room.y2):
             map[x][y].blocked = False
             map[x][y].block_sight = False
- 
+
 def create_h_tunnel(x1, x2, y):
     global map
     #horizontal tunnel. min() and max() are used in case x1>x2
     for x in range(min(x1, x2), max(x1, x2) + 1):
         map[x][y].blocked = False
         map[x][y].block_sight = False
- 
+
 def create_v_tunnel(y1, y2, x):
     global map
     #vertical tunnel
     for y in range(min(y1, y2), max(y1, y2) + 1):
         map[x][y].blocked = False
         map[x][y].block_sight = False
- 
+
 def make_map():
     global map, objects, stairs
- 
-    #the list of objects with just the player
+
     objects = [player]
- 
-    #fill map with "blocked" tiles
+
     map = [[ Tile(True)
         for y in range(MAP_HEIGHT) ]
             for x in range(MAP_WIDTH) ]
- 
+
     rooms = []
     num_rooms = 0
- 
+
     for r in range(MAX_ROOMS):
         #random width and height
         w = libtcod.random_get_int(0, ROOM_MIN_SIZE, ROOM_MAX_SIZE)
@@ -358,17 +355,17 @@ def make_map():
         #random position without going out of the boundaries of the map
         x = libtcod.random_get_int(0, 0, MAP_WIDTH - w - 1)
         y = libtcod.random_get_int(0, 0, MAP_HEIGHT - h - 1)
- 
+
         #"Rect" class makes rectangles easier to work with
         new_room = Rect(x, y, w, h)
- 
+
         #run through the other rooms and see if they intersect with this one
         failed = False
         for other_room in rooms:
             if new_room.intersect(other_room):
                 failed = True
                 break
- 
+
         if not failed:
             #this means there are no intersections, so this room is valid
  
@@ -447,7 +444,7 @@ def place_objects(room):
     item_chances['fireball'] = from_dungeon_level([[25, 6]])
     item_chances['confuse'] = from_dungeon_level([[10, 2]])
     item_chances['sword'] = from_dungeon_level([[5, 4]])
- 
+
 
     #choose random number of monsters
     num_monsters = libtcod.random_get_int(0, 0, max_monsters)
