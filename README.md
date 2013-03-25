@@ -17,4 +17,4 @@ from the 1980 game Rogue.
 
 Start by:
 
-> python main.py
+	$ python main.py
