@@ -1,7 +1,8 @@
 # ⌘ [mi8-reEVA]
 
 This is python roguelike using libtcod library, and based on tutorial from site
-about [roguelike development](roguelikedevelopment.org) .
+about [roguelike development](roguelikedevelopment.org). That's the biggest project
+I have done so far to be honest.
 
 ***********************************************************************************
 
