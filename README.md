@@ -1,4 +1,4 @@
-# ⌘ [mi8-reEVA]
+# ⌘ [mi.reEVA]
 
 This is python roguelike using libtcod library, and based on tutorial from site
 about [roguelike development](roguelikedevelopment.org). That's the biggest project
